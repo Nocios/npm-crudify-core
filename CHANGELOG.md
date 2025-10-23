@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0] - 2025-10-24
+
+### Added
+
+- **New `getNextSequence()` method** for auto-generated codes in frontend
+  - Allows UI to fetch next sequence value before creating records
+  - Enables users to see generated codes (barCode, sale numbers, etc.) before saving
+  - Supports custom prefixes (e.g., "PROD-", "USER-", "SALE-")
+  - Public endpoint (API key only, no authentication required)
+  - Built-in rate limiting protection (20 requests/minute per IP)
+  - Comprehensive test coverage (16+ unit tests)
+  - Example: `const result = await crudify.getNextSequence("PROD-")`
+- **GraphQL query `getNextSequence`** for sequence generation API
+- **TypeScript interface updates** in `CrudifyPublicAPI` for new method
+
+### Changed
+
+- Enhanced sequence generation workflow from backend-only to frontend-first
+- Updated type definitions to include `getNextSequence` method signature
+
+### Testing
+
+- **New test suite**: `sequence-operations.test.ts` (16 tests)
+  - Basic sequence generation for different prefixes
+  - Sequential increment validation
+  - Prefix validation (empty, invalid type, unauthorized)
+  - Error handling (rate limit, server errors, initialization)
+  - AbortSignal support
+  - Public API usage (no authentication)
+  - Integration tests with formatting examples
+
+### Documentation
+
+- Added JSDoc documentation for `getNextSequence()` method with usage examples
+- Updated CHANGELOG with sequence generation feature details
+
+---
+
+## [Unreleased - Previous]
+
 ### Added
 
 - **Comprehensive test suite** for library quality assurance (100 tests)
