@@ -144,6 +144,16 @@ query MyQuery($data: AWSJSON) {
 }
 `;
 
+const queryGetNextSequence = `
+query MyQuery($data: AWSJSON) {
+  response:getNextSequence(data: $data) {
+    data
+    status
+    fieldsWarning
+  }
+}
+`;
+
 const dataMasters = {
   dev: { ApiMetadata: "https://auth.dev.crudify.io", ApiKeyMetadata: "da2-pl3xidupjnfwjiykpbp75gx344" },
   stg: { ApiMetadata: "https://auth.stg.crudify.io", ApiKeyMetadata: "da2-hooybwpxirfozegx3v4f3kaelq" },
@@ -1014,6 +1024,33 @@ class Crudify implements CrudifyPublicAPI {
 
   public transaction = async (data: any, options?: CrudifyRequestOptions): Promise<CrudifyResponse> => {
     return this.performCrudOperation(mutationTransaction, { data: JSON.stringify(data) }, options);
+  };
+
+  /**
+   * Get next sequence value for auto-generated codes
+   * @param prefix - The prefix/counterKey for the sequence (e.g., "PROD-", "USER-")
+   * @param options - Optional request configuration (AbortSignal)
+   * @returns Promise<CrudifyResponse> with data: { value: number }
+   *
+   * @example
+   * ```typescript
+   * const result = await crudify.getNextSequence("PROD-");
+   * if (result.success) {
+   *   const sequenceNumber = result.data.value;
+   *   const barCode = `PROD-${String(sequenceNumber).padStart(7, '0')}`;
+   *   console.log(barCode); // "PROD-0013671"
+   * }
+   * ```
+   */
+  public getNextSequence = async (prefix: string, options?: CrudifyRequestOptions): Promise<CrudifyResponse> => {
+    if (!prefix || typeof prefix !== "string") {
+      return {
+        success: false,
+        errors: { _validation: ["PREFIX_REQUIRED"] },
+      };
+    }
+
+    return this.performCrudOperation(queryGetNextSequence, { data: JSON.stringify({ prefix }) }, options);
   };
 
   public static getInstance(): Crudify {
