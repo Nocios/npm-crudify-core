@@ -124,8 +124,8 @@ mutation MyMutation($data: AWSJSON) {
 }
 `;
 
-const queryGenerateSignedUrl = `
-query MyQuery($data: AWSJSON) {
+const mutationGenerateSignedUrl = `
+mutation MyMutation($data: AWSJSON) {
   response:generateSignedUrl(data: $data) {
     data
     status
@@ -1025,7 +1025,7 @@ class Crudify implements CrudifyPublicAPI {
     };
 
     const rawResponse = await this.executeQuery(
-      queryGenerateSignedUrl,
+      mutationGenerateSignedUrl,
       { data: JSON.stringify(requestData) },
       { Authorization: `Bearer ${this.token}` },
       options?.signal
