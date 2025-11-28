@@ -162,6 +162,7 @@ export interface CrudifyPublicAPI {
   transaction: (data: any, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   getNextSequence: (prefix: string, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   generateSignedUrl: (data: { fileName: string; contentType: string }, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
+  disableFile: (data: { filePath: string }, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   setResponseInterceptor: (interceptor: CrudifyResponseInterceptor | null) => void;
   shutdown: () => Promise<void>;
 }

@@ -154,6 +154,16 @@ query MyQuery($data: AWSJSON) {
 }
 `;
 
+const mutationDisableFile = `
+mutation MyMutation($data: AWSJSON) {
+  response:disableFile(data: $data) {
+    data
+    status
+    fieldsWarning
+  }
+}
+`;
+
 const dataMasters = {
   dev: { ApiMetadata: "https://auth.dev.crudify.io", ApiKeyMetadata: "da2-pl3xidupjnfwjiykpbp75gx344" },
   stg: { ApiMetadata: "https://auth.stg.crudify.io", ApiKeyMetadata: "da2-hooybwpxirfozegx3v4f3kaelq" },
@@ -1000,6 +1010,17 @@ class Crudify implements CrudifyPublicAPI {
     if (internalResponse.success && internalResponse.data?.url) return { success: true, data: internalResponse.data.url };
 
     return this.adaptToPublicResponse(internalResponse);
+  };
+
+  /**
+   * Disable (soft-delete) a file in S3
+   * This allows for recovery if needed and prevents accidental data loss
+   * @param data - Object containing filePath (relative path without subscriberKey)
+   * @param options - Optional request configuration (AbortSignal)
+   * @returns Promise<CrudifyResponse> with data: { filePath, disabled: true }
+   */
+  public disableFile = async (data: { filePath: string }, options?: CrudifyRequestOptions): Promise<CrudifyResponse> => {
+    return this.performCrudOperation(mutationDisableFile, { data: JSON.stringify(data) }, options);
   };
 
   public readItem = async (
