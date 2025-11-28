@@ -161,7 +161,11 @@ export interface CrudifyPublicAPI {
   deleteItem: (moduleKey: string, id: string, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   transaction: (data: any, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   getNextSequence: (prefix: string, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
-  generateSignedUrl: (data: { fileName: string; contentType: string }, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
+  generateSignedUrl: (
+    data: { fileName: string; contentType: string; visibility?: "public" | "private" },
+    options?: CrudifyRequestOptions
+  ) => Promise<CrudifyResponse>;
+  getFileUrl: (data: { filePath: string; expiresIn?: number }, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   disableFile: (data: { filePath: string }, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   setResponseInterceptor: (interceptor: CrudifyResponseInterceptor | null) => void;
   shutdown: () => Promise<void>;
