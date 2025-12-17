@@ -7,12 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [4.1.16] - 2025-12-17
+## [4.1.18] - 2025-12-17
 
 ### Added
 
 - **GZIP decompression support** for compressed API responses
-  - Automatically detects and decompresses responses with "GZIP:" prefix
+  - Automatically detects `{ _gzip: "base64..." }` object wrapper in AWSJSON responses
+  - Parses AWSJSON string, detects compression, decompresses with pako
   - Uses `pako` library for browser-compatible gzip inflation
   - Transparent to API consumers - works seamlessly with existing code
   - Debug logging shows compression stats when `logLevel: "debug"`
@@ -22,19 +23,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Testing
 
-- **5 new unit tests** for GZIP decompression functionality
-  - Basic GZIP:prefixed data decompression
+- **6 new unit tests** for GZIP decompression functionality
+  - `_gzip` object wrapper decompression (AWSJSON string format)
   - Large compressed payloads handling (1000+ items)
-  - Non-GZIP data passthrough (backwards compatibility)
+  - Non-compressed data passthrough (backwards compatibility)
   - Invalid GZIP data graceful error handling
   - Compressed arrays support
-- Total tests: 135 (up from 130)
+  - Object data without `_gzip` key handling
+- Total tests: 136 (up from 130)
 
 ### Performance
 
-- Compressed responses reduce bandwidth usage by 60-80% for large payloads
+- Compressed responses reduce bandwidth usage by 50-65% for large payloads
 - Decompression adds minimal overhead (~1-5ms for typical responses)
-- Only affects responses explicitly compressed by backend (GZIP: prefix)
+- Only affects responses with `_gzip` key from backend compression middleware
+
+### Technical Details
+
+- Backend sends: `data: { _gzip: "H4sIAAA..." }` (object)
+- AWSJSON serializes to: `"{\"_gzip\":\"H4sIAAA...\"}}"` (string)
+- Frontend parses JSON string, detects `_gzip`, decompresses to original data
 
 ---
 
@@ -97,6 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Testing
 
 - **Unit Tests** (77 tests)
+
   - Token Validation (12 tests): JWT validation, expiration checks, token management
   - Response Formatting (21 tests): Error formatting, data sanitization, dangerous property detection
   - Configuration (10 tests): Environment configuration, logging levels, interceptors

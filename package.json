@@ -1,6 +1,6 @@
 {
   "name": "@nocios/crudify-browser",
-  "version": "4.1.16",
+  "version": "4.1.22",
   "description": "Browser-specific Lightweight JS SDK for Crudify GraphQL API with Refresh Token Pattern support",
   "author": "Nocios",
   "license": "MIT",

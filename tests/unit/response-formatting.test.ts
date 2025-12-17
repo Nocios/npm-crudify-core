@@ -333,16 +333,17 @@ describe("Response Formatting", () => {
         return btoa(binary);
       };
 
-      it("should decompress GZIP:prefixed data successfully", () => {
+      it("should decompress _gzip from AWSJSON string format", () => {
         const originalData = { id: "123", name: "Test Item", items: [1, 2, 3] };
         const jsonString = JSON.stringify(originalData);
         const compressedBase64 = compressToGzipBase64(jsonString);
 
+        // AWSJSON returns stringified JSON
         const response = {
           data: {
             response: {
               status: "OK",
-              data: `GZIP:${compressedBase64}`,
+              data: JSON.stringify({ _gzip: compressedBase64 }),
               fieldsWarning: null,
             },
           },
@@ -366,11 +367,12 @@ describe("Response Formatting", () => {
         const jsonString = JSON.stringify(largeData);
         const compressedBase64 = compressToGzipBase64(jsonString);
 
+        // AWSJSON returns stringified JSON
         const response = {
           data: {
             response: {
               status: "OK",
-              data: `GZIP:${compressedBase64}`,
+              data: JSON.stringify({ _gzip: compressedBase64 }),
               fieldsWarning: null,
             },
           },
@@ -383,7 +385,7 @@ describe("Response Formatting", () => {
         expect(formatted.data.items[500].id).toBe(500);
       });
 
-      it("should handle non-GZIP prefixed data normally", () => {
+      it("should handle non-compressed data normally", () => {
         const normalData = { id: "456", name: "Normal" };
 
         const response = {
@@ -403,11 +405,12 @@ describe("Response Formatting", () => {
       });
 
       it("should handle invalid GZIP data gracefully", () => {
+        // AWSJSON returns stringified JSON
         const response = {
           data: {
             response: {
               status: "OK",
-              data: "GZIP:invalidbase64!!!",
+              data: JSON.stringify({ _gzip: "invalidbase64!!!" }),
               fieldsWarning: null,
             },
           },
@@ -415,8 +418,9 @@ describe("Response Formatting", () => {
 
         const formatted = (crudifyPrivateMethods as any).formatResponseInternal(response);
 
-        // Should fail gracefully when decompression fails
-        expect(formatted.success).toBe(false);
+        // Should fail gracefully - returns the original stringified data
+        expect(formatted.success).toBe(true);
+        expect(formatted.data).toHaveProperty("_gzip");
       });
 
       it("should handle compressed arrays", () => {
@@ -424,11 +428,12 @@ describe("Response Formatting", () => {
         const jsonString = JSON.stringify(arrayData);
         const compressedBase64 = compressToGzipBase64(jsonString);
 
+        // AWSJSON returns stringified JSON
         const response = {
           data: {
             response: {
               status: "OK",
-              data: `GZIP:${compressedBase64}`,
+              data: JSON.stringify({ _gzip: compressedBase64 }),
               fieldsWarning: null,
             },
           },
@@ -439,6 +444,24 @@ describe("Response Formatting", () => {
         expect(formatted.success).toBe(true);
         expect(Array.isArray(formatted.data)).toBe(true);
         expect(formatted.data.length).toBe(3);
+      });
+
+      it("should handle object data without _gzip key normally", () => {
+        // AWSJSON returns stringified JSON
+        const response = {
+          data: {
+            response: {
+              status: "OK",
+              data: JSON.stringify({ someField: "value", anotherField: 123 }),
+              fieldsWarning: null,
+            },
+          },
+        };
+
+        const formatted = (crudifyPrivateMethods as any).formatResponseInternal(response);
+
+        expect(formatted.success).toBe(true);
+        expect(formatted.data).toEqual({ someField: "value", anotherField: 123 });
       });
     });
   });

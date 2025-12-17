@@ -410,13 +410,25 @@ class Crudify implements CrudifyPublicAPI {
       if (!apiResponse.data) {
         dataResponse = null;
       } else {
-        // Validación básica de seguridad antes del parsing
-        let rawData = String(apiResponse.data);
+        // Handle GZIP compressed responses (object wrapper format: { _gzip: "base64..." })
+        const COMPRESSION_KEY = "_gzip";
+        let rawData: string;
 
-        const GZIP_PREFIX = "GZIP:";
-        if (rawData.startsWith(GZIP_PREFIX)) {
+        // AWSJSON always returns a string - parse it first to check for compression
+        let parsedData: any = apiResponse.data;
+        if (typeof apiResponse.data === "string") {
           try {
-            const base64Data = rawData.slice(GZIP_PREFIX.length);
+            parsedData = JSON.parse(apiResponse.data);
+          } catch {
+            // Not valid JSON, use as-is
+            parsedData = null;
+          }
+        }
+
+        // Check if data is a compressed object wrapper
+        if (parsedData && typeof parsedData === "object" && COMPRESSION_KEY in parsedData) {
+          try {
+            const base64Data = parsedData[COMPRESSION_KEY];
             const binaryString = atob(base64Data);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
@@ -434,8 +446,12 @@ class Crudify implements CrudifyPublicAPI {
             if (this.logLevel === "debug") {
               console.error("Crudify: Failed to decompress GZIP response", decompressionError);
             }
-            rawData = rawData.slice(GZIP_PREFIX.length);
+            // On decompression failure, use original string
+            rawData = String(apiResponse.data);
           }
+        } else {
+          // Normal uncompressed data - use original string
+          rawData = String(apiResponse.data);
         }
 
         // Verificar que no sea excesivamente largo (DoS protection)
