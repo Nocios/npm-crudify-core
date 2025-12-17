@@ -1,4 +1,5 @@
 import { _fetch, shutdownNodeSpecifics } from "./fetch-impl";
+import pako from "pako";
 import {
   CrudifyEnvType,
   CrudifyIssue,
@@ -410,7 +411,32 @@ class Crudify implements CrudifyPublicAPI {
         dataResponse = null;
       } else {
         // Validación básica de seguridad antes del parsing
-        const rawData = String(apiResponse.data);
+        let rawData = String(apiResponse.data);
+
+        const GZIP_PREFIX = "GZIP:";
+        if (rawData.startsWith(GZIP_PREFIX)) {
+          try {
+            const base64Data = rawData.slice(GZIP_PREFIX.length);
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            const decompressed = pako.inflate(bytes, { to: "string" });
+            rawData = decompressed;
+            if (this.logLevel === "debug") {
+              console.log("Crudify: Decompressed GZIP response", {
+                compressedSize: base64Data.length,
+                decompressedSize: rawData.length,
+              });
+            }
+          } catch (decompressionError) {
+            if (this.logLevel === "debug") {
+              console.error("Crudify: Failed to decompress GZIP response", decompressionError);
+            }
+            rawData = rawData.slice(GZIP_PREFIX.length);
+          }
+        }
 
         // Verificar que no sea excesivamente largo (DoS protection)
         if (rawData.length > 10 * 1024 * 1024) {

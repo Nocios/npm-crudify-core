@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NociosError } from "../../src/types";
 import CrudifyInstance from "../../src/crudify";
+import pako from "pako";
 
 describe("Response Formatting", () => {
   let crudifyPrivateMethods: any;
@@ -91,11 +92,7 @@ describe("Response Formatting", () => {
     });
 
     it("should handle arrays", () => {
-      const data = [
-        { apiKey: "da2-secret1" },
-        { apiKey: "da2-secret2" },
-        { normalField: "visible" },
-      ];
+      const data = [{ apiKey: "da2-secret1" }, { apiKey: "da2-secret2" }, { normalField: "visible" }];
 
       const sanitized = (crudifyPrivateMethods as any).sanitizeForLogging(data);
 
@@ -195,10 +192,7 @@ describe("Response Formatting", () => {
 
     it("should handle GraphQL errors", () => {
       const response = {
-        errors: [
-          { message: "Not authorized" },
-          { message: "Invalid input" },
-        ],
+        errors: [{ message: "Not authorized" }, { message: "Invalid input" }],
       };
 
       const formatted = (crudifyPrivateMethods as any).formatResponseInternal(response);
@@ -209,9 +203,7 @@ describe("Response Formatting", () => {
     });
 
     it("should handle FIELD_ERROR status", () => {
-      const issues = [
-        { path: ["email"], message: "Invalid email" },
-      ];
+      const issues = [{ path: ["email"], message: "Invalid email" }];
 
       const response = {
         data: {
@@ -328,6 +320,126 @@ describe("Response Formatting", () => {
 
       expect(formatted.success).toBe(false);
       expect(formatted.errors?._error).toContain("INVALID_RESPONSE_STRUCTURE");
+    });
+
+    describe("GZIP compression handling", () => {
+      const compressToGzipBase64 = (data: string): string => {
+        const compressed = pako.gzip(data);
+        // Convert Uint8Array to base64
+        let binary = "";
+        for (let i = 0; i < compressed.length; i++) {
+          binary += String.fromCharCode(compressed[i]);
+        }
+        return btoa(binary);
+      };
+
+      it("should decompress GZIP:prefixed data successfully", () => {
+        const originalData = { id: "123", name: "Test Item", items: [1, 2, 3] };
+        const jsonString = JSON.stringify(originalData);
+        const compressedBase64 = compressToGzipBase64(jsonString);
+
+        const response = {
+          data: {
+            response: {
+              status: "OK",
+              data: `GZIP:${compressedBase64}`,
+              fieldsWarning: null,
+            },
+          },
+        };
+
+        const formatted = (crudifyPrivateMethods as any).formatResponseInternal(response);
+
+        expect(formatted.success).toBe(true);
+        expect(formatted.data).toEqual(originalData);
+      });
+
+      it("should handle large compressed payloads", () => {
+        // Create a large array of items
+        const largeData = {
+          items: Array.from({ length: 1000 }, (_, i) => ({
+            id: i,
+            name: `Item ${i}`,
+            description: `This is a description for item ${i} with some extra text to make it larger`,
+          })),
+        };
+        const jsonString = JSON.stringify(largeData);
+        const compressedBase64 = compressToGzipBase64(jsonString);
+
+        const response = {
+          data: {
+            response: {
+              status: "OK",
+              data: `GZIP:${compressedBase64}`,
+              fieldsWarning: null,
+            },
+          },
+        };
+
+        const formatted = (crudifyPrivateMethods as any).formatResponseInternal(response);
+
+        expect(formatted.success).toBe(true);
+        expect(formatted.data.items.length).toBe(1000);
+        expect(formatted.data.items[500].id).toBe(500);
+      });
+
+      it("should handle non-GZIP prefixed data normally", () => {
+        const normalData = { id: "456", name: "Normal" };
+
+        const response = {
+          data: {
+            response: {
+              status: "OK",
+              data: JSON.stringify(normalData),
+              fieldsWarning: null,
+            },
+          },
+        };
+
+        const formatted = (crudifyPrivateMethods as any).formatResponseInternal(response);
+
+        expect(formatted.success).toBe(true);
+        expect(formatted.data).toEqual(normalData);
+      });
+
+      it("should handle invalid GZIP data gracefully", () => {
+        const response = {
+          data: {
+            response: {
+              status: "OK",
+              data: "GZIP:invalidbase64!!!",
+              fieldsWarning: null,
+            },
+          },
+        };
+
+        const formatted = (crudifyPrivateMethods as any).formatResponseInternal(response);
+
+        // Should fail gracefully when decompression fails
+        expect(formatted.success).toBe(false);
+      });
+
+      it("should handle compressed arrays", () => {
+        const arrayData = [{ id: 1 }, { id: 2 }, { id: 3 }];
+        const jsonString = JSON.stringify(arrayData);
+        const compressedBase64 = compressToGzipBase64(jsonString);
+
+        const response = {
+          data: {
+            response: {
+              status: "OK",
+              data: `GZIP:${compressedBase64}`,
+              fieldsWarning: null,
+            },
+          },
+        };
+
+        const formatted = (crudifyPrivateMethods as any).formatResponseInternal(response);
+
+        expect(formatted.success).toBe(true);
+        expect(Array.isArray(formatted.data)).toBe(true);
+        expect(formatted.data.length).toBe(3);
+      });
     });
   });
 });
