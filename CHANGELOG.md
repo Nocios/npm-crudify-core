@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical Details
 
 - Backend sends: `data: { _gzip: "H4sIAAA..." }` (object)
-- AWSJSON serializes to: `"{\"_gzip\":\"H4sIAAA...\"}}"` (string)
+- AWSJSON serializes to: `"{\"_gzip\":\"H4sIAAA...\"}"` (string)
 - Frontend parses JSON string, detects `_gzip`, decompresses to original data
 
 ---
