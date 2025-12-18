@@ -1,4 +1,5 @@
 import type { CrudifyLogLevel } from "./types";
+import { logger } from "./logger";
 
 // Detect if we're in a browser environment
 export const IS_BROWSER = typeof window !== "undefined" && typeof window.document !== "undefined";
@@ -14,11 +15,9 @@ export const _fetch = async (url: globalThis.RequestInfo, options?: globalThis.R
   }
 };
 
-export const shutdownNodeSpecifics = async (logLevel?: CrudifyLogLevel): Promise<void> => {
-  if (logLevel === "debug") {
-    const env = IS_BROWSER ? "Browser" : "Node.js";
-    console.log(`Crudify (${env}): shutdownNodeSpecifics called - no action needed.`);
-  }
+export const shutdownNodeSpecifics = async (_logLevel?: CrudifyLogLevel): Promise<void> => {
+  const env = IS_BROWSER ? "Browser" : "Node.js";
+  logger.debug(`(${env}): shutdownNodeSpecifics called - no action needed.`);
 };
 
 export const getInternalNodeSpecificsSetupPromise = (): Promise<void> => {
