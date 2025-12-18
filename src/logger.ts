@@ -21,6 +21,7 @@
  */
 
 export type LogLevel = "error" | "warn" | "info" | "debug";
+export type CrudifyLogLevel = "none" | "debug" | "info" | "warn" | "error";
 
 export interface LogContext {
   [key: string]: any;
@@ -47,13 +48,51 @@ const SENSITIVE_PATTERNS = [
 let ENVIRONMENT = "prod";
 const PREFIX = "CrudifyCore";
 
+// Log level hierarchy (none = disabled)
+const LOG_LEVEL_PRIORITY: Record<CrudifyLogLevel, number> = {
+  none: 0,
+  error: 1,
+  warn: 2,
+  info: 3,
+  debug: 4,
+};
+
 class Logger {
   private env: string;
   private prefix: string;
+  private logLevel: CrudifyLogLevel = "none";
 
   constructor() {
     this.env = ENVIRONMENT;
     this.prefix = PREFIX;
+  }
+
+  /**
+   * Set config (environment and log level) - called by crudify.config()
+   */
+  setConfig(env: string, logLevel?: CrudifyLogLevel): void {
+    this.env = env;
+    ENVIRONMENT = env;
+    if (logLevel) {
+      this.logLevel = logLevel;
+    }
+  }
+
+  /**
+   * Set log level - called by crudify.init()
+   */
+  setLogLevel(logLevel: CrudifyLogLevel): void {
+    this.logLevel = logLevel;
+  }
+
+  /**
+   * Check if a specific log level should be logged based on configured level
+   */
+  private isLevelEnabled(level: LogLevel): boolean {
+    if (this.logLevel === "none") return false;
+    const levelPriority = LOG_LEVEL_PRIORITY[level];
+    const configuredPriority = LOG_LEVEL_PRIORITY[this.logLevel];
+    return levelPriority <= configuredPriority;
   }
 
   /**
@@ -95,13 +134,18 @@ class Logger {
   }
 
   /**
-   * Check if a log level should be displayed based on environment
-   * - dev/stg: show all logs
-   * - prod: show only errors
+   * Check if a log level should be displayed based on logLevel setting
+   * When logLevel is set (via setLogLevel/setConfig), it takes precedence
+   * Otherwise falls back to environment-based logging
    */
   private shouldLog(level: LogLevel): boolean {
-    const isProduction = this.env === "prod" || this.env === "production" || this.env === "api";
+    // If logLevel is set, use it
+    if (this.logLevel !== "none") {
+      return this.isLevelEnabled(level);
+    }
 
+    // Fallback to environment-based logging
+    const isProduction = this.env === "prod" || this.env === "production" || this.env === "api";
     if (isProduction && level !== "error") {
       return false;
     }
@@ -146,43 +190,61 @@ class Logger {
   }
 
   /**
-   * Log an error - Always logged in all environments
+   * Convert any value to LogContext for logging
    */
-  error(message: string, context?: LogContext | Error): void {
-    let logContext: LogContext | undefined;
+  private toLogContext(...args: unknown[]): LogContext | undefined {
+    if (args.length === 0) return undefined;
 
-    if (context instanceof Error) {
-      logContext = {
-        errorName: context.name,
-        errorMessage: context.message,
-        stack: context.stack,
+    // Single Error argument
+    if (args.length === 1 && args[0] instanceof Error) {
+      const error = args[0];
+      return {
+        errorName: error.name,
+        errorMessage: error.message,
+        stack: error.stack,
       };
-    } else {
-      logContext = context;
     }
 
-    this.log("error", message, logContext);
+    // Single LogContext object
+    if (args.length === 1 && typeof args[0] === "object" && args[0] !== null && !(args[0] instanceof Error)) {
+      return args[0] as LogContext;
+    }
+
+    // Single primitive value
+    if (args.length === 1) {
+      return { value: args[0] };
+    }
+
+    // Multiple arguments - convert to array context
+    return { args: args.map((arg, i) => (arg instanceof Error ? { error: arg.message, stack: arg.stack } : arg)) };
+  }
+
+  /**
+   * Log an error - Always logged in all environments
+   */
+  error(message: string, ...args: unknown[]): void {
+    this.log("error", message, this.toLogContext(...args));
   }
 
   /**
    * Log a warning - Only in dev/stg
    */
-  warn(message: string, context?: LogContext): void {
-    this.log("warn", message, context);
+  warn(message: string, ...args: unknown[]): void {
+    this.log("warn", message, this.toLogContext(...args));
   }
 
   /**
    * Log info - Only in dev/stg
    */
-  info(message: string, context?: LogContext): void {
-    this.log("info", message, context);
+  info(message: string, ...args: unknown[]): void {
+    this.log("info", message, this.toLogContext(...args));
   }
 
   /**
    * Log debug information - Only in dev/stg
    */
-  debug(message: string, context?: LogContext): void {
-    this.log("debug", message, context);
+  debug(message: string, ...args: unknown[]): void {
+    this.log("debug", message, this.toLogContext(...args));
   }
 
   /**
