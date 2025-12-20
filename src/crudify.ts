@@ -12,6 +12,7 @@ import {
   RawGraphQLResponse,
   NociosError,
   CrudifyTokenConfig,
+  TransactionInput,
 } from "./types";
 import { logger } from "./logger";
 
@@ -276,7 +277,9 @@ class Crudify implements CrudifyPublicAPI {
       body: JSON.stringify({ query: queryInit, variables: { apiKey: publicApiKey } }),
     });
 
-    const data: any = await response.json();
+    const data = (await response.json()) as RawGraphQLResponse<{
+      response: { apiEndpoint: string; apiKeyEndpoint: string; apiEndpointAdmin?: string; apiKeyEndpointAdmin?: string };
+    }>;
 
     logger.debug("Init Response:", this.sanitizeForLogging(data));
     logger.debug("Metadata URL:", Crudify.ApiMetadata);
@@ -308,7 +311,7 @@ class Crudify implements CrudifyPublicAPI {
     }, {} as Record<string, string[]>);
   };
 
-  private containsDangerousProperties = (obj: any, depth = 0): boolean => {
+  private containsDangerousProperties = (obj: unknown, depth = 0): boolean => {
     if (depth > 10) return false;
 
     if (!obj || typeof obj !== "object") return false;
@@ -328,19 +331,20 @@ class Crudify implements CrudifyPublicAPI {
       "process",
     ];
 
-    for (const key in obj) {
+    const record = obj as Record<string, unknown>;
+    for (const key in record) {
       if (dangerousKeys.includes(key.toLowerCase())) {
         return true;
       }
 
       // Recursively check nested objects
-      if (obj[key] && typeof obj[key] === "object") if (this.containsDangerousProperties(obj[key], depth + 1)) return true;
+      if (record[key] && typeof record[key] === "object") if (this.containsDangerousProperties(record[key], depth + 1)) return true;
     }
 
     return false;
   };
 
-  private sanitizeForLogging = (data: any): any => {
+  private sanitizeForLogging = (data: unknown): unknown => {
     if (!data || typeof data !== "object") {
       // Mask strings that look like tokens or API keys
       if (typeof data === "string") {
@@ -353,7 +357,7 @@ class Crudify implements CrudifyPublicAPI {
 
     if (Array.isArray(data)) return data.map((item) => this.sanitizeForLogging(item));
 
-    const sanitized: any = {};
+    const sanitized: Record<string, unknown> = {};
     const sensitiveKeys = [
       "apikey",
       "apiKey",
@@ -385,9 +389,10 @@ class Crudify implements CrudifyPublicAPI {
     return sanitized;
   };
 
-  private formatResponseInternal = (response: any): InternalCrudifyResponseType => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- API response structure varies by operation
+  private formatResponseInternal = (response: RawGraphQLResponse<any>): InternalCrudifyResponseType => {
     if (response.errors) {
-      const errorMessages = response.errors.map((err: any) => String(err.message || "UNKNOWN_GRAPHQL_ERROR"));
+      const errorMessages = response.errors.map((err) => String(err.message || "UNKNOWN_GRAPHQL_ERROR"));
       return {
         success: false,
         errors: { _graphql: errorMessages.map((x: string) => x.toUpperCase().replace(/ /g, "_").replace(/\./g, "")) },
@@ -413,6 +418,7 @@ class Crudify implements CrudifyPublicAPI {
         let rawData: string;
 
         // AWSJSON always returns a string - parse it first to check for compression
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic JSON parsing requires flexible typing
         let parsedData: any = apiResponse.data;
         if (typeof apiResponse.data === "string") {
           try {
@@ -590,7 +596,7 @@ class Crudify implements CrudifyPublicAPI {
     // Handle authentication errors
     if (rawResponse.errors) {
       const hasAuthError = rawResponse.errors.some(
-        (error: any) =>
+        (error) =>
           error.message?.includes("Unauthorized") ||
           error.message?.includes("Invalid token") ||
           error.message?.includes("NOT_AUTHORIZED_TO_ACCESS") ||
@@ -1078,7 +1084,7 @@ class Crudify implements CrudifyPublicAPI {
     return this.performCrudOperation(mutationDeleteItem, { moduleKey, data: JSON.stringify({ _id: id }) }, options);
   };
 
-  public transaction = async (data: any, options?: CrudifyRequestOptions): Promise<CrudifyResponse> => {
+  public transaction = async (data: TransactionInput, options?: CrudifyRequestOptions): Promise<CrudifyResponse> => {
     return this.performCrudOperation(mutationTransaction, { data: JSON.stringify(data) }, options);
   };
 

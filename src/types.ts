@@ -78,29 +78,50 @@ export type CrudifyFieldErrors = {
 
 /**
  * Defines the structure of the public-facing response from Crudify SDK methods.
+ * @template T - The type of the data payload. Defaults to unknown for type safety.
  */
-export type CrudifyResponse = {
+export type CrudifyResponse<T = unknown> = {
   success: boolean;
-  data?: any;
+  data?: T;
   errors?: CrudifyFieldErrors;
-  fieldsWarning?: any;
+  fieldsWarning?: Record<string, string[]> | null;
   errorCode?: NociosError;
 };
 
 /**
  * Internal representation of a response within Crudify, potentially more detailed.
+ * @internal
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Internal type needs flexibility for varying API response structures
 export type InternalCrudifyResponseType = {
   success: boolean;
   data?: any;
-  errors?: CrudifyFieldErrors | any;
-  fieldsWarning?: any;
+  errors?: CrudifyFieldErrors;
+  fieldsWarning?: Record<string, string[]> | null;
   errorCode?: NociosError;
 };
 
-export interface RawGraphQLResponse {
-  data?: any;
-  errors?: any[];
+/**
+ * Represents a GraphQL error from the API response.
+ */
+export interface GraphQLError {
+  message: string;
+  path?: (string | number)[];
+  extensions?: {
+    code?: string;
+    errorType?: string;
+    [key: string]: unknown;
+  };
+  locations?: { line: number; column: number }[];
+}
+
+/**
+ * Raw response structure from the GraphQL API.
+ * @template T - The type of the data payload. Defaults to Record<string, unknown>.
+ */
+export interface RawGraphQLResponse<T = Record<string, unknown>> {
+  data?: T;
+  errors?: GraphQLError[];
 }
 
 export type CrudifyResponseInterceptor = (response: RawGraphQLResponse) => RawGraphQLResponse | Promise<RawGraphQLResponse>;
@@ -159,7 +180,7 @@ export interface CrudifyPublicAPI {
   readItems: (moduleKey: string, filter: object, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   updateItem: (moduleKey: string, data: object, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   deleteItem: (moduleKey: string, id: string, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
-  transaction: (data: any, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
+  transaction: (data: TransactionInput, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   getNextSequence: (prefix: string, options?: CrudifyRequestOptions) => Promise<CrudifyResponse>;
   generateSignedUrl: (
     data: { fileName: string; contentType: string; visibility?: "public" | "private" },
@@ -174,6 +195,22 @@ export interface CrudifyPublicAPI {
 export type CrudifyRequestOptions = {
   signal?: AbortSignal;
 };
+
+/**
+ * Represents a single operation within a transaction.
+ */
+export interface TransactionOperation {
+  operation: "create" | "update" | "delete" | string;
+  moduleKey: string;
+  data?: Record<string, unknown>;
+  _id?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Input for transaction operations. Can be a single operation or an array of operations.
+ */
+export type TransactionInput = TransactionOperation | TransactionOperation[] | Record<string, unknown>;
 
 /**
  * Configuration for populating referenced documents in read operations.

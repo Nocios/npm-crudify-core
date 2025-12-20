@@ -8,11 +8,16 @@ import {
   CrudifyResponse,
   CrudifyResponseInterceptor,
   RawGraphQLResponse,
+  GraphQLError,
   NociosError,
   CrudifyTokenData,
   CrudifyTokenConfig,
+  CrudifyFieldErrors,
+  CrudifyRequestOptions,
   PopulateOption,
   ReadItemFilter,
+  TransactionOperation,
+  TransactionInput,
 } from "./types";
 
 export {
@@ -23,11 +28,16 @@ export {
   type CrudifyPublicAPI,
   type CrudifyResponse,
   type RawGraphQLResponse,
+  type GraphQLError,
   type CrudifyResponseInterceptor,
   type CrudifyTokenData,
   type CrudifyTokenConfig,
+  type CrudifyFieldErrors,
+  type CrudifyRequestOptions,
   type PopulateOption,
   type ReadItemFilter,
+  type TransactionOperation,
+  type TransactionInput,
   NociosError,
 };
 

@@ -5,7 +5,7 @@ import { logger } from "./logger";
 export const IS_BROWSER = typeof window !== "undefined" && typeof window.document !== "undefined";
 
 export const _fetch = async (url: globalThis.RequestInfo, options?: globalThis.RequestInit): Promise<globalThis.Response> => {
-  const { dispatcher, ...browserOptions } = options || ({} as any);
+  const { dispatcher, ...browserOptions } = (options || {}) as RequestInit & { dispatcher?: unknown };
 
   // Use window.fetch in browser, globalThis.fetch in Node.js (v18+)
   if (IS_BROWSER) {

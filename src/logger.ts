@@ -23,8 +23,9 @@
 export type LogLevel = "error" | "warn" | "info" | "debug";
 export type CrudifyLogLevel = "none" | "debug" | "info" | "warn" | "error";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Log context needs to accept any serializable value
 export interface LogContext {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // ============================================
@@ -124,7 +125,7 @@ class Logger {
       } else if (typeof value === "string") {
         sanitized[key] = this.sanitize(value);
       } else if (typeof value === "object" && value !== null) {
-        sanitized[key] = this.sanitizeContext(value);
+        sanitized[key] = this.sanitizeContext(value as LogContext);
       } else {
         sanitized[key] = value;
       }
