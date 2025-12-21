@@ -348,6 +348,10 @@ class Crudify implements CrudifyPublicAPI {
     if (!data || typeof data !== "object") {
       // Mask strings that look like tokens or API keys
       if (typeof data === "string") {
+        // Truncate very large strings to prevent regex performance issues
+        if (data.length > 10000) {
+          return data.substring(0, 100) + `... [truncated ${data.length} chars]`;
+        }
         if (data.length > 20 && (data.includes("da2-") || data.includes("ey") || data.match(/^[a-zA-Z0-9_-]{20,}$/))) {
           return data.substring(0, 6) + "******";
         }
