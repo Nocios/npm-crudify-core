@@ -201,7 +201,7 @@ export type CrudifyRequestOptions = {
  */
 export interface TransactionOperation {
   operation: "create" | "update" | "delete" | string;
-  moduleKey: string;
+  moduleKey?: string;
   data?: Record<string, unknown>;
   _id?: string;
   [key: string]: unknown;
